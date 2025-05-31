@@ -1,0 +1,1078 @@
+import pandas as pd
+import mysql.connector
+
+conn = mysql.connector.connect(
+    host='localhost',
+    user='Olha',
+    password='17071965',  
+    database='global_heath'   
+)
+cursor = conn.cursor()
+
+df1 = pd.read_csv("csv/global_health_clean1.csv")
+
+sql1 = """
+INSERT INTO global_health (
+    country, country_code, year, fertility_rate, urban_population_percent, total_population, water_access_percent,
+    unemployment_rate, sanitary_expense_per_GDP, life_expectancy, life_expectancy_female, life_expectancy_male,
+    infant_deaths, GDP_per_capita, female_population, male_population, alcohol_consumption_per_capita,
+    immunization_rate, sanitary_expense_per_capita, CO2_exposure_percent, air_pollution, labour_force_total, 
+    suicide_rrate_percent, obesity_rate_percent, underweight_rate_percent, overweight_rate_percent, safe_water_access_percent
+) VALUES (
+    %s, %s, %s, %s, %s, %s, 
+    %s, %s, %s, %s, %s, %s, 
+    %s, %s, %s, %s, %s, %s, 
+    %s, %s, %s, %s, %s, %s, 
+    %s, %s, %s
+)
+"""
+for _, row in df1.iterrows():
+    cursor.execute(sql1, tuple(row))
+
+
+df = pd.read_csv("csv/Global Health Statistics clean1.csv")
+
+sql = """
+INSERT INTO global_health_statistics (
+    country, year, disease_name, disease_category, prevalence_rate, incidence_rate,
+    mortality_rate, age_group, gender, population_affected, healthcare_access,
+    doctors_per_1000, hospital_beds_per_1000, treatment_type, average_treatment_cost_usd,
+    availability_of_vaccines_treatment, recovery_rate, dalys, improvement_in_5_years,
+    per_capita_income_usd, education_index, urbanization_rate
+) VALUES (
+    %s, %s, %s, %s, %s, %s,
+    %s, %s, %s, %s, %s, %s,
+    %s, %s, %s, %s, %s,
+    %s, %s, %s, %s, %s
+)
+"""
+for _, row in df.iterrows():
+    cursor.execute(sql, tuple(row))
+
+df2 = pd.read_csv("csv/Infectious_Disease_cases2001-2014.csv")
+
+sql2 = """
+INSERT INTO infectious_disease (
+    disease, country, year, sex, count, population, rate, CI_lower, CI_upper
+) VALUES (
+    %s, %s, %s, %s, %s, %s, 
+    %s, %s, %s
+)
+"""
+for _, row in df2.iterrows():
+    cursor.execute(sql2, tuple(row))
+conn.commit()
+cursor.close()
+conn.close()
+
+CREATE DATABASE stage;
+USE stage;
+
+CREATE TABLE global_health_statistics (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    country VARCHAR(100),
+    year INT,
+    disease_name VARCHAR(150),
+    disease_category VARCHAR(100),
+    prevalence_rate FLOAT,
+    incidence_rate FLOAT,
+    mortality_rate FLOAT,
+    age_group VARCHAR(50),
+    gender VARCHAR(50),
+    population_affected INT,
+    healthcare_access FLOAT,
+    doctors_per_1000 FLOAT,
+    hospital_beds_per_1000 FLOAT,
+    treatment_type VARCHAR(100),
+    average_treatment_cost_usd INT,
+    availability_of_vaccines_treatment VARCHAR(100),
+    recovery_rate FLOAT,
+    dalys INT,
+    improvement_in_5_years FLOAT,
+    per_capita_income_usd INT,
+    education_index FLOAT,
+    urbanization_rate FLOAT
+);
+
+CREATE TABLE global_health (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    country VARCHAR(100),
+    country_code VARCHAR(10),
+    year INT,
+    fertility_rate FLOAT,
+    urban_population_percent FLOAT,
+    total_population INT,
+    water_access_percent FLOAT,
+    unemployment_rate FLOAT,
+    sanitary_expense_per_GDP FLOAT,
+    life_expectancy FLOAT,
+    life_expectancy_female FLOAT,
+    life_expectancy_male FLOAT,
+    infant_deaths INT,
+    GDP_per_capita FLOAT,
+    female_population FLOAT,
+    male_population FLOAT,
+    alcohol_consumption_per_capita FLOAT,
+    immunization_rate FLOAT,
+    sanitary_expense_per_capita FLOAT,
+    CO2_exposure_percent FLOAT,
+    air_pollution FLOAT,
+    labour_force_total FLOAT,
+    suicide_rrate_percent FLOAT,
+    obesity_rate_percent FLOAT,
+    underweight_rate_percent FLOAT,
+    overweight_rate_percent FLOAT,
+    safe_water_access_percent FLOAT
+);
+
+CREATE TABLE infectious_disease (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    disease VARCHAR(100),
+    country VARCHAR(100),
+    year INT,
+    sex VARCHAR(10),
+    count INT,
+    population INT,
+    rate FLOAT,
+    CI_lower FLOAT,
+    CI_upper FLOAT
+);
+
+CREATE TABLE dim_age_group (
+    age_group_id INT PRIMARY KEY AUTO_INCREMENT,
+    age_group VARCHAR(10)
+);
+
+CREATE TABLE dim_healthcare (
+    healthcare_id INT PRIMARY KEY AUTO_INCREMENT,
+    doctors_per_1000 FLOAT,
+    immunization_rate FLOAT,
+    healthcare_access FLOAT
+);
+
+CREATE TABLE dim_year (
+    year_id INT AUTO_INCREMENT PRIMARY KEY,
+    year INT
+);
+
+CREATE TABLE dim_country (
+    country_id INT AUTO_INCREMENT PRIMARY KEY,  
+    country_name VARCHAR(500),                  
+    country_code VARCHAR(10)                   
+);
+
+CREATE TABLE dim_gender (
+    gender_id INT AUTO_INCREMENT PRIMARY KEY,  
+    gender VARCHAR(50)                         
+);
+
+CREATE TABLE dim_disease (
+    disease_id INT AUTO_INCREMENT PRIMARY KEY,  
+    disease VARCHAR(255), 
+    count INT,                                             
+    treatment_type VARCHAR(100),               
+    disease_category VARCHAR(100),
+    success_rate FLOAT             
+);
+
+CREATE TABLE fact_population (
+    population_id INT AUTO_INCREMENT PRIMARY KEY,
+    year_id INT,
+    country_id INT,
+    female_population INT,
+    male_population INT,
+    urban_population_percent FLOAT,
+    total_population INT,
+    FOREIGN KEY (country_id) REFERENCES dim_country(country_id),   
+    FOREIGN KEY (year_id) REFERENCES dim_year(year_id)
+);
+
+ CREATE TABLE fact_environment (
+    environment_id INT PRIMARY KEY AUTO_INCREMENT,
+    country_id INT,
+    year_id INT,
+    air_pollution FLOAT,         
+    co2_exposure FLOAT,          
+    safe_water_access FLOAT,     
+    FOREIGN KEY (country_id) REFERENCES dim_country(country_id),   
+    FOREIGN KEY (year_id) REFERENCES dim_year(year_id)
+);
+
+
+CREATE TABLE fact_disease_stats (
+    id INT AUTO_INCREMENT PRIMARY KEY,  
+    country_id INT,                     
+    year_id INT,                        
+    disease_id INT,                    
+    population_id INT,                  
+    genre_id INT,                       
+    recovery_rate FLOAT,       
+    prevalence_rate FLOAT,      
+    incidence_rate FLOAT,       
+    mortality_rate FLOAT,       
+    education_index FLOAT,              
+    unemployment_rate FLOAT,            
+    life_expectancy FLOAT,             
+    life_expectancy_female FLOAT,       
+    life_expectancy_male FLOAT,         
+    infant_deaths INT,                  
+    fertility_rate FLOAT,      
+    suicide_rate_percent FLOAT,  
+    alcohol_consumption_per_capita FLOAT,       
+    FOREIGN KEY (country_id) REFERENCES dim_country(country_id),   
+    FOREIGN KEY (year_id) REFERENCES dim_year(year_id),             
+    FOREIGN KEY (disease_id) REFERENCES dim_disease(disease_id),   
+    FOREIGN KEY (population_id) REFERENCES fact_population(population_id),  
+    FOREIGN KEY (genre_id) REFERENCES dim_gender(gender_id)           
+);
+
+--- Процедури завантаження даних ---
+DELIMITER $$
+
+CREATE PROCEDURE load_dim_country()
+BEGIN
+    INSERT IGNORE INTO dim_country (country_name, country_code)
+    SELECT DISTINCT country, country_code
+    FROM global_health
+    WHERE country IS NOT NULL AND country_code IS NOT NULL;
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE load_dim_year()
+BEGIN
+    INSERT IGNORE INTO dim_year (year)
+    SELECT DISTINCT year
+    FROM global_health
+    WHERE year IS NOT NULL;
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE load_dim_gender()
+BEGIN
+    INSERT IGNORE INTO dim_gender (gender)
+    SELECT DISTINCT sex
+    FROM infectious_disease
+    WHERE sex IS NOT NULL;
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE load_dim_disease()
+BEGIN
+    INSERT IGNORE INTO dim_disease (disease, count, 
+    treatment_type, disease_category, success_rate)
+    SELECT DISTINCT 
+    ghs.disease_name, 
+    (SELECT MAX(id.count) FROM infectious_disease id 
+    WHERE id.disease = ghs.disease_name), 
+    ghs.treatment_type, 
+    ghs.disease_category, 
+    ghs.recovery_rate
+    FROM global_health_statistics
+    WHERE disease_name IS NOT NULL;
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE load_fact_population()
+BEGIN
+    INSERT INTO fact_population (
+        year_id, 
+        country_id, 
+        female_population, 
+        male_population,
+        urban_population_percent, 
+        total_population
+    )
+    SELECT
+        y.year_id,                 
+        c.country_id,              
+        gh.female_population,     
+        gh.male_population,        
+        gh.urban_population_percent, 
+        gh.total_population        
+    FROM global_health gh
+    JOIN dim_country c ON gh.country = c.country_name
+    JOIN dim_year y ON gh.year = y.year
+    WHERE gh.female_population IS NOT NULL
+      AND gh.male_population IS NOT NULL
+      AND gh.urban_population_percent IS NOT NULL
+      AND gh.total_population IS NOT NULL;
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE load_dim_age_group()
+BEGIN
+    INSERT IGNORE INTO dim_age_group (age_group)
+    SELECT DISTINCT age_group
+    FROM global_health_statistics
+    WHERE age_group IS NOT NULL;
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE load_dim_healthcare()
+BEGIN
+    INSERT IGNORE INTO dim_healthcare (doctors_per_1000, immunization_rate, healthcare_access)
+    SELECT DISTINCT 
+        ghs.doctors_per_1000,
+        gh.immunization_rate,
+        ghs.healthcare_access
+    FROM global_health_statistics ghs
+    JOIN global_health gh 
+      ON ghs.country = gh.country 
+     AND ghs.year = gh.year
+    WHERE ghs.doctors_per_1000 IS NOT NULL
+      AND gh.immunization_rate IS NOT NULL
+      AND ghs.healthcare_access IS NOT NULL;
+END$$
+
+DELIMITER ;
+
+
+DELIMITER $$
+
+CREATE PROCEDURE load_fact_environment()
+BEGIN
+    INSERT INTO fact_environment (
+        country_id, 
+        year_id, 
+        air_pollution, 
+        co2_exposure, 
+        safe_water_access
+    )
+    SELECT
+        c.country_id,
+        y.year_id,
+        gh.air_pollution,
+        gh.CO2_exposure_percent,
+        gh.safe_water_access_percent
+    FROM global_health gh
+    JOIN dim_country c ON gh.country = c.country_name
+    JOIN dim_year y ON gh.year = y.year
+    WHERE gh.air_pollution IS NOT NULL
+      AND gh.CO2_exposure_percent IS NOT NULL
+      AND gh.safe_water_access_percent IS NOT NULL;
+END$$
+
+DELIMITER ;
+
+
+DELIMITER $$
+
+CREATE PROCEDURE load_fact_disease_stats(IN max_rows INT)
+BEGIN
+    INSERT INTO fact_disease_stats (
+        country_id, year_id, disease_id, population_id, genre_id,
+        recovery_rate, prevalence_rate, incidence_rate, mortality_rate,
+        education_index, unemployment_rate,
+        life_expectancy, life_expectancy_female, life_expectancy_male,
+        infant_deaths, fertility_rate, suicide_rate_percent,
+        alcohol_consumption_per_capita
+    )
+    SELECT
+        c.country_id,
+        y.year_id,
+        d.disease_id,
+        p.population_id,
+        g.gender_id,
+        s.recovery_rate,
+        s.prevalence_rate,
+        s.incidence_rate,
+        s.mortality_rate,
+        s.education_index,
+        gh.unemployment_rate,
+        gh.life_expectancy,
+        gh.life_expectancy_female,
+        gh.life_expectancy_male,
+        gh.infant_deaths,
+        gh.fertility_rate,
+        gh.suicide_rrate_percent,
+        gh.alcohol_consumption_per_capita
+    FROM global_health_statistics s
+    JOIN global_health gh ON gh.country = s.country AND gh.year = s.year
+    JOIN dim_country c ON s.country = c.country_name
+    JOIN dim_year y ON s.year = y.year
+    JOIN dim_gender g ON s.gender = g.gender
+    JOIN dim_disease d ON s.disease_name = d.disease
+    JOIN fact_population p ON p.country_id = c.country_id AND p.year_id = y.year_id
+    LIMIT max_rows;
+END$$
+
+DELIMITER ;
+
+CALL load_fact_disease_stats(50000);
+
+CALL load_dim_age_group();
+CALL load_dim_healthcare();
+CALL load_fact_environment();
+CALL load_fact_disease_stats();
+CALL load_dim_country();
+CALL load_dim_year();
+CALL load_dim_gender();
+CALL load_dim_disease();
+CALL load_fact_population();
+
+-----Вставка-------------------------
+
+SELECT MAX(country_id) AS max_id FROM dim_country;
+
+ALTER TABLE dim_country AUTO_INCREMENT = 171;
+
+DELIMITER $$
+
+CREATE PROCEDURE insert_dim_country(
+    IN new_country_name VARCHAR(500),
+    IN new_country_code VARCHAR(10)
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM dim_country 
+        WHERE country_name = new_country_name 
+          AND country_code = new_country_code
+    ) THEN
+        INSERT INTO dim_country (country_name, country_code)
+        VALUES (new_country_name, new_country_code);
+        SELECT 'Новий запис успішно додано.' AS message;
+    ELSE
+        SELECT 'Запис з такою назвою країни та кодом вже існує.' AS message;
+    END IF;
+END$$
+
+DELIMITER ;
+
+CALL insert_dim_country('Ukraine', 'UKR');
+
+
+SELECT MAX(year_id) AS max_id FROM dim_year;
+
+ALTER TABLE dim_year AUTO_INCREMENT = 10;
+CREATE PROCEDURE insert_dim_year(
+    IN new_year INT
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM dim_year 
+        WHERE year = new_year
+    ) THEN
+        INSERT INTO dim_year (year)
+        VALUES (new_year);
+        SELECT ' Новий запис у dim_year додано.' AS message;
+    ELSE
+        SELECT 'Запис у dim_year вже існує.' AS message;
+    END IF;
+END$$
+
+
+SELECT MAX(gender_id) AS max_id FROM dim_gender;
+ALTER TABLE dim_gender AUTO_INCREMENT = 3;
+
+CREATE PROCEDURE insert_dim_gender(
+    IN new_gender VARCHAR(50)
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM dim_gender 
+        WHERE gender = new_gender
+    ) THEN
+        INSERT INTO dim_gender (gender)
+        VALUES (new_gender);
+        SELECT 'Новий запис у dim_gender додано.' AS message;
+    ELSE
+        SELECT 'Запис у dim_gender вже існує.' AS message;
+    END IF;
+END$$
+
+
+SELECT MAX(disease_id) AS max_id FROM dim_disease;
+ALTER TABLE dim_disease AUTO_INCREMENT = 196606;
+
+CREATE PROCEDURE insert_dim_disease(
+    IN new_disease VARCHAR(255),
+    IN new_count INT,
+    IN new_treatment_type VARCHAR(100),
+    IN new_disease_category VARCHAR(100),
+    IN new_success_rate FLOAT
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM dim_disease 
+        WHERE disease = new_disease 
+          AND treatment_type = new_treatment_type
+          AND disease_category = new_disease_category
+    ) THEN
+        INSERT INTO dim_disease (disease, count, treatment_type, disease_category, success_rate)
+        VALUES (new_disease, new_count, new_treatment_type, new_disease_category, new_success_rate);
+        SELECT 'Новий запис у dim_disease додано.' AS message;
+    ELSE
+        SELECT 'Запис у dim_disease вже існує.' AS message;
+    END IF;
+END$$
+
+
+SELECT MAX(age_group_id) AS max_id FROM dim_age_group;
+ALTER TABLE dim_age_group AUTO_INCREMENT = 8;
+
+CREATE PROCEDURE insert_dim_age_group(
+    IN new_age_group VARCHAR(10)
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM dim_age_group 
+        WHERE age_group = new_age_group
+    ) THEN
+        INSERT INTO dim_age_group (age_group)
+        VALUES (new_age_group);
+        SELECT 'Новий запис у dim_age_group додано.' AS message;
+    ELSE
+        SELECT 'Запис у dim_age_group вже існує.' AS message;
+    END IF;
+END$$
+
+
+SELECT MAX(healthcare_id) AS max_id FROM dim_healthcare;
+ALTER TABLE dim_healthcare AUTO_INCREMENT = 44706;
+
+CREATE PROCEDURE insert_dim_healthcare(
+    IN new_doctors_per_1000 FLOAT,
+    IN new_immunization_rate FLOAT,
+    IN new_healthcare_access FLOAT
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM dim_healthcare 
+        WHERE doctors_per_1000 = new_doctors_per_1000
+          AND immunization_rate = new_immunization_rate
+          AND healthcare_access = new_healthcare_access
+    ) THEN
+        INSERT INTO dim_healthcare (doctors_per_1000, immunization_rate, healthcare_access)
+        VALUES (new_doctors_per_1000, new_immunization_rate, new_healthcare_access);
+        SELECT 'Новий запис у dim_healthcare додано.' AS message;
+    ELSE
+        SELECT ' Запис у dim_healthcare вже існує.' AS message;
+    END IF;
+END$$
+
+DELIMITER ;
+
+
+SELECT MAX(population_id) AS max_id FROM fact_population;
+ALTER TABLE fact_population AUTO_INCREMENT = 1695;
+
+DELIMITER $$
+
+CREATE PROCEDURE insert_fact_population(
+    IN in_year_id INT,
+    IN in_country_id INT,
+    IN in_female_population INT,
+    IN in_male_population INT,
+    IN in_urban_population_percent FLOAT,
+    IN in_total_population INT
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM fact_population
+        WHERE year_id = in_year_id AND country_id = in_country_id
+    ) THEN
+        INSERT INTO fact_population (
+            year_id, country_id, female_population, male_population, urban_population_percent, total_population
+        ) VALUES (
+            in_year_id, in_country_id, in_female_population, in_male_population, in_urban_population_percent, in_total_population
+        );
+    END IF;
+END$$
+
+DELIMITER ;
+
+
+SELECT MAX(environment_id) AS max_id FROM fact_environment;
+ALTER TABLE fact_environment AUTO_INCREMENT = 1695;
+
+DELIMITER $$
+
+CREATE PROCEDURE insert_fact_environment(
+    IN in_country_id INT,
+    IN in_year_id INT,
+    IN in_air_pollution FLOAT,
+    IN in_co2_exposure FLOAT,
+    IN in_safe_water_access FLOAT
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM fact_environment
+        WHERE country_id = in_country_id AND year_id = in_year_id
+    ) THEN
+        INSERT INTO fact_environment (
+            country_id, year_id, air_pollution, co2_exposure, safe_water_access
+        ) VALUES (
+            in_country_id, in_year_id, in_air_pollution, in_co2_exposure, in_safe_water_access
+        );
+    END IF;
+END$$
+
+DELIMITER ;
+
+DELIMITER $$
+
+SELECT MAX(id) AS max_id FROM fact_disease_stats;
+ALTER TABLE fact_disease_stats AUTO_INCREMENT = 50001;
+
+CREATE PROCEDURE insert_fact_disease_stats(
+    IN in_country_id INT,
+    IN in_year_id INT,
+    IN in_disease_id INT,
+    IN in_population_id INT,
+    IN in_genre_id INT,
+    IN in_recovery_rate FLOAT,
+    IN in_prevalence_rate FLOAT,
+    IN in_incidence_rate FLOAT,
+    IN in_mortality_rate FLOAT,
+    IN in_education_index FLOAT,
+    IN in_unemployment_rate FLOAT,
+    IN in_life_expectancy FLOAT,
+    IN in_life_expectancy_female FLOAT,
+    IN in_life_expectancy_male FLOAT,
+    IN in_infant_deaths INT,
+    IN in_fertility_rate FLOAT,
+    IN in_suicide_rate_percent FLOAT,
+    IN in_alcohol_consumption_per_capita FLOAT
+)
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM fact_disease_stats
+        WHERE country_id = in_country_id
+          AND year_id = in_year_id
+          AND disease_id = in_disease_id
+          AND population_id = in_population_id
+          AND genre_id = in_genre_id
+    ) THEN
+        INSERT INTO fact_disease_stats (
+            country_id, year_id, disease_id, population_id, genre_id,
+            recovery_rate, prevalence_rate, incidence_rate, mortality_rate,
+            education_index, unemployment_rate,
+            life_expectancy, life_expectancy_female, life_expectancy_male,
+            infant_deaths, fertility_rate, suicide_rate_percent,
+            alcohol_consumption_per_capita
+        ) VALUES (
+            in_country_id, in_year_id, in_disease_id, in_population_id, in_genre_id,
+            in_recovery_rate, in_prevalence_rate, in_incidence_rate, in_mortality_rate,
+            in_education_index, in_unemployment_rate,
+            in_life_expectancy, in_life_expectancy_female, in_life_expectancy_male,
+            in_infant_deaths, in_fertility_rate, in_suicide_rate_percent,
+            in_alcohol_consumption_per_capita
+        );
+    END IF;
+END$$
+
+DELIMITER ;
+
+CALL insert_fact_population(
+    2023,          
+    5,            
+    1200000,       
+    1300000,       
+    75.5,          
+    2500000        
+);
+
+CALL insert_fact_environment(
+    5,           
+    2023,          
+    42.3,          
+    3.5,           
+    89.7           
+);
+
+CALL insert_fact_disease_stats(
+    5,             
+    2023,          
+    12,            
+    101,           
+    2,             
+    85.5,          
+    4.3,          
+    1.2,           
+    0.5,           
+    0.78,         
+    6.4,           
+    72.5,          
+    75.1,         
+    69.8,          
+    1200,          
+    1.9,          
+    0.8,           
+    7.2            
+);
+
+
+
+CALL insert_dim_country('Germany', 'DE');
+CALL insert_dim_year(2010);
+CALL insert_dim_gender('Male');
+CALL insert_dim_age_group('15-24');
+CALL insert_dim_healthcare(3.1, 95.2, 82.0);
+CALL insert_dim_disease('Malaria', 12000, 'Antimalarial drugs', 'Parasitic', 92.0);
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+df = pd.read_csv("csv/Global Health Statistics clean1.csv") 
+
+columns = ["Country", "Year", "Age Group", "Disease Category", "Mortality Rate (%)"]
+df_filtered = df[columns].dropna()
+df.groupby(["Age Group", "Disease Category"])["Mortality Rate (%)"].mean().unstack().plot(kind="bar", stacked=True, figsize=(12,6))
+
+category_group = df_filtered.groupby("Disease Category")["Mortality Rate (%)"].mean().sort_values(ascending=False)
+
+plt.figure(figsize=(10, 6))
+sns.barplot(x=category_group.values, y=category_group.index, palette="viridis")
+plt.title("Середній рівень смертності за категоріями хвороб")
+plt.xlabel("Середній Mortality Rate (%)")
+plt.ylabel("Категорія хвороби")
+plt.tight_layout()
+plt.show()
+
+import pandas as pd
+
+#  Фільтрація потрібних колонок і видалення пропусків
+df_filtered = df[["Country", "Mortality Rate (%)"]].dropna()
+
+country_avg = df_filtered.groupby("Country")["Mortality Rate (%)"].mean().sort_values(ascending=False)
+
+top_5 = country_avg.head(5)
+
+
+print("Топ-5 країн за середнім рівнем смертності:")
+print(top_5)
+
+
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+from sklearn.decomposition import PCA
+
+
+# #K-Means
+
+df_stats = pd.read_csv("Global Health Statistics clean1.csv")
+df_health = pd.read_csv("global_health_clean1.csv")
+
+df = pd.merge(df_stats, df_health, on=["Country", "Year"], how="inner")
+
+features = [
+    'Life_Expectancy',
+    'GDP_Per_Capita',
+    'Immunization_Rate',
+    'Obesity_Rate_Percent',
+    'Healthcare_Access' 
+]
+
+
+df_sub = df[features].dropna()
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(df_sub)
+
+
+inertia = []
+K_range = range(1, 11)
+for k in K_range:
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(X_scaled)
+    inertia.append(kmeans.inertia_)
+
+plt.figure(figsize=(8,4))
+plt.plot(K_range, inertia, 'bo-')
+plt.xlabel('Кількість кластерів (k)')
+plt.ylabel('Inertia')
+plt.title('Метод ліктя')
+plt.show()
+
+k_optimal = 3
+kmeans = KMeans(n_clusters=k_optimal, random_state=42)
+clusters = kmeans.fit_predict(X_scaled)
+
+df_sub['Cluster'] = clusters
+
+
+cluster_summary = df_sub.groupby('Cluster').mean()
+print("Середні значення змінних по кластерах:")
+print(cluster_summary)
+
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+
+df_sub['PCA1'] = X_pca[:, 0]
+df_sub['PCA2'] = X_pca[:, 1]
+
+plt.figure(figsize=(8,6))
+sns.scatterplot(x='PCA1', y='PCA2', hue='Cluster', palette='viridis', data=df_sub)
+plt.title('Кластеризація країн (k-means, PCA 2D)')
+plt.show()
+
+
+plt.figure(figsize=(8,4))
+sns.boxplot(x='Cluster', y='Life_Expectancy', data=df_sub)
+plt.title('Тривалість життя по кластерах')
+plt.show()
+
+
+----значення Inertia---------
+inertia = []
+K_range = range(1, 11)
+for k in K_range:
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(X_scaled)
+    inertia.append(kmeans.inertia_)
+    print(f"Inertia для k={k}: {kmeans.inertia_}")
+
+
+
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+
+df_health = pd.read_csv("Global Health Statistics clean1.csv")   # з "Mortality Rate (%)"
+df_context = pd.read_csv("global_health_clean1.csv")             # з "Life_Expectancy", "Sanitary_Expense_Per_GDP", "Healthcare Access (%)"
+
+# З'єднання по країні та року
+df = pd.merge(df_health, df_context, on=["Country", "Year"], how="inner")
+
+# Вибрані ознаки (агреговані по роках)
+features_yearly = [
+    'Mortality Rate (%)',
+    'Healthcare Access (%)',
+    'Sanitary_Expense_Per_GDP',
+    'Life_Expectancy'
+]
+
+# Агрегація: середні значення по кожному року
+df_yearly = df.groupby('Year')[features_yearly].mean().dropna().reset_index()
+
+# Стандартизація
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(df_yearly[features_yearly])
+
+# Метод ліктя для визначення оптимального k
+inertia = []
+K_range = range(1, 10)
+for k in K_range:
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(X_scaled)
+    inertia.append(kmeans.inertia_)
+
+# Візуалізація методу ліктя
+plt.figure(figsize=(8, 4))
+plt.plot(K_range, inertia, 'bo-')
+plt.xlabel('Кількість кластерів (k)')
+plt.ylabel('Inertia')
+plt.title('Метод ліктя: Кластеризація по роках')
+plt.grid(True)
+plt.show()
+
+optimal_k = 3
+kmeans = KMeans(n_clusters=optimal_k, random_state=42)
+df_yearly['Cluster'] = kmeans.fit_predict(X_scaled)
+
+print("Кількість років у кожному кластері:")
+print(df_yearly['Cluster'].value_counts().sort_index())
+
+
+print("\nСередні показники по кластерах:")
+print(df_yearly.groupby('Cluster')[features_yearly].mean().round(2))
+
+# Візуалізація кластерів у 2D за допомогою PCA
+pca = PCA(n_components=2)
+X_pca = pca.fit_transform(X_scaled)
+df_yearly['PCA1'] = X_pca[:, 0]
+df_yearly['PCA2'] = X_pca[:, 1]
+
+plt.figure(figsize=(8, 6))
+for cluster in sorted(df_yearly['Cluster'].unique()):
+    subset = df_yearly[df_yearly['Cluster'] == cluster]
+    plt.scatter(subset['PCA1'], subset['PCA2'], label=f"Cluster {cluster}")
+
+
+for _, row in df_yearly.iterrows():
+    plt.text(row['PCA1'], row['PCA2'], str(int(row['Year'])), fontsize=8, ha='center', va='center')
+
+plt.title('Кластеризація років за глобальними медичними показниками')
+plt.xlabel('PCA1')
+plt.ylabel('PCA2')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+import pandas as pd
+import numpy as np
+
+df = pd.read_csv('Global Health Statistics clean1.csv')
+print(df.head())  
+
+df.replace("", np.nan, inplace=True)
+
+df.drop('Improvement in 5 Years (%)товпчика', axis=1, inplace=True)
+
+df['Water_Access_Percent'] = df.groupby('Country')['Water_Access_Percent'].transform(
+    lambda x: x.fillna(x.mean())
+)
+
+df['Water_Access_Percent'].isna().sum()
+
+df['Water_Access_Percent'] = df['Water_Access_Percent'].interpolate(method='linear')
+
+df['Safe_Water_Access_Percent'] = df['Safe_Water_Access_Percent'].interpolate(method='linear')
+
+df['Safe_Water_Access_Percent'].isna().sum()
+
+df['Suicide_Rate_Percent'] = df['Suicide_Rate_Percent'].interpolate(method='linear')
+
+print(df.loc[[10, 20], ['Country', 'Safe_Water_Access_Percent']])
+
+print(df.loc[['Ukraine', 'Germany']])
+
+df = df.drop(columns=['Tuberculosis_Per_100000'])
+
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression
+
+df2 = pd.read_csv('global_health_clean1.csv')
+
+train_df = df2[(df2['Year'] <= 2020) & (df2['Alcohol_Consumption_Per_Capita'].notna())]
+
+X = train_df[['Year']]  
+y = train_df['Alcohol_Consumption_Per_Capita']
+
+
+model = LinearRegression()
+model.fit(X, y)
+
+
+X_pred = pd.DataFrame([[2021]], columns=['Year']) 
+prediction_2021 = model.predict(X_pred)[0]
+
+df2.loc[
+    (df2['Year'] == 2021) & (df2['Alcohol_Consumption_Per_Capita'].isna()),
+    'Alcohol_Consumption_Per_Capita'
+] = prediction_2021
+
+df['Obesity_Rate_Percent'] = df['Obesity_Rate_Percent'].interpolate()
+
+df['Underweight_Rate_Percent'] = df['Underweight_Rate_Percent'].interpolate()
+
+df['Overweight_Rate_Percent'] = (
+    df['Overweight_Rate_Percent']
+    .interpolate()           
+    .fillna(method='ffill') 
+    .fillna(method='bfill') 
+)
+
+df['CO2_Exposure_Percent'] = (
+    df.groupby('Country')['CO2_Exposure_Percent']  
+    .transform(lambda group: group.interpolate(limit_direction='both'))  
+)
+
+import matplotlib.pyplot as plt
+
+for grp in df_interp['Group'].unique():
+    group_df = df_interp[df_interp['Group'] == grp]
+    plt.plot(group_df['Year'], group_df['CO2_Exposure_Percent'], marker='o', label=f'Group {grp}')
+
+plt.xlabel('Year')
+plt.ylabel('CO2 Exposure Percent')
+plt.title('CO2 Exposure over Years (by group)')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+
+missing_gdp = df[df['GDP_Per_Capita'].isna()]
+
+missing_countries = missing_gdp['Country'].unique()
+
+print(missing_countries)
+
+print(df[df['GDP_Per_Capita'].isna()][['Country', 'Year', 'GDP_Per_Capita']])
+
+
+gdp_data = {
+    ('Eritrea', 2012): 693.80,
+    ('Eritrea', 2013): 596.75,
+    ('Eritrea', 2014): 786.54,
+    ('Eritrea', 2015): 603.19,
+    ('Eritrea', 2016): 655.42,
+    ('Eritrea', 2017): 557.86,
+    ('Eritrea', 2018): 580.84,
+    ('Eritrea', 2019): 566.73,
+    ('Eritrea', 2020): 595.66,
+    ('Eritrea', 2021): 614.26,
+
+    ('South Sudan', 2012): 1115.00,
+    ('South Sudan', 2013): 1659.00,
+    ('South Sudan', 2014): 1245.00,
+    ('South Sudan', 2015): 1072.00,
+    ('South Sudan', 2016): 249.84,
+    ('South Sudan', 2017): 228.03,
+    ('South Sudan', 2018): 246.16,
+    ('South Sudan', 2019): 209.79,
+    ('South Sudan', 2020): 214.18,
+    ('South Sudan', 2021): 217.03,
+
+    ('Venezuela, RB', 2012): 12938.00,
+    ('Venezuela, RB', 2013): 12434.00,
+    ('Venezuela, RB', 2014): 15976.00,
+    ('Venezuela, RB', 2015): 10568.10,
+    ('Venezuela, RB', 2016): 9092.00,
+    ('Venezuela, RB', 2017): 4725.10,
+    ('Venezuela, RB', 2018): 3404.40,
+    ('Venezuela, RB', 2019): 2624.40,
+    ('Venezuela, RB', 2020): 1566.60,
+    ('Venezuela, RB', 2021): 2090.40
+}
+
+for (country, year), value in gdp_data.items():
+    df.loc[
+        (df['Country'] == country) & (df['Year'] == year) & (df['GDP_Per_Capita'].isna()),
+        'GDP_Per_Capita'
+    ] = value
+
+
+columns_to_round = ['GDP_Per_Capita', 'Sanitary_Expense_Per_Capita', 'Health_Expense_Per_Capita']
+
+df2[columns_to_round] = df2[columns_to_round].round(2)
+
+
+
